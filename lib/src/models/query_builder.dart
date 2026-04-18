@@ -6,15 +6,20 @@
 ///   .where('age', isGreaterThan: 18)
 ///   .where('status', isEqualTo: 'active')
 ///   .orderBy('created_at', descending: true)
-///   .limit(10);
+///   .limit(10)
+///   .page(2)
+///   .select(['name', 'email', 'age']);
 /// ```
 class QueryBuilder {
   final Map<String, dynamic> _where = {};
   String _orderBy = 'created_at';
   String _orderDir = 'desc';
   int _perPage = 15;
+  int _page = 1;
+  List<String>? _select;
+  String? _search;
 
-  /// Add an equality filter.
+  /// Add a where filter.
   QueryBuilder where(
     String field, {
     dynamic isEqualTo,
@@ -27,6 +32,7 @@ class QueryBuilder {
     List<dynamic>? whereIn,
     List<dynamic>? whereNotIn,
     dynamic arrayContains,
+    bool? isNull,
   }) {
     if (isEqualTo != null) {
       _where[field] = {'op': 'eq', 'value': isEqualTo};
@@ -48,6 +54,8 @@ class QueryBuilder {
       _where[field] = {'op': 'not-in', 'value': whereNotIn.join(',')};
     } else if (arrayContains != null) {
       _where[field] = {'op': 'array-contains', 'value': arrayContains};
+    } else if (isNull != null) {
+      _where[field] = {'op': isNull ? 'is_null' : 'is_not_null', 'value': ''};
     }
     return this;
   }
@@ -65,15 +73,44 @@ class QueryBuilder {
     return this;
   }
 
+  /// Set the page number (1-based).
+  QueryBuilder page(int page) {
+    _page = page;
+    return this;
+  }
+
+  /// Select specific fields to return (projection).
+  ///
+  /// ```dart
+  /// .select(['name', 'email']) // only return name and email in data
+  /// ```
+  QueryBuilder select(List<String> fields) {
+    _select = fields;
+    return this;
+  }
+
+  /// Full-text search across document data fields.
+  QueryBuilder search(String query) {
+    _search = query;
+    return this;
+  }
+
   /// Build query parameters map for API request.
   Map<String, dynamic> toQueryParams() {
     final params = <String, dynamic>{
       'per_page': _perPage.toString(),
+      'page': _page.toString(),
       'order_by': _orderBy,
       'order_dir': _orderDir,
     };
     if (_where.isNotEmpty) {
       params['where'] = _where;
+    }
+    if (_select != null && _select!.isNotEmpty) {
+      params['select'] = _select!.join(',');
+    }
+    if (_search != null && _search!.isNotEmpty) {
+      params['search'] = _search;
     }
     return params;
   }

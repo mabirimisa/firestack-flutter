@@ -48,12 +48,11 @@ class FirestackMessage {
       body: json['body'] as String? ?? '',
       metadata: json['metadata'] as Map<String, dynamic>?,
       replyTo: json['reply_to'] != null
-          ? FirestackMessage.fromJson(
-              json['reply_to'] as Map<String, dynamic>)
+          ? FirestackMessage.fromJson(json['reply_to'] as Map<String, dynamic>)
           : null,
       reactions: (json['reactions'] as List<dynamic>?)
-              ?.map((r) =>
-                  FirestackReaction.fromJson(r as Map<String, dynamic>))
+              ?.map(
+                  (r) => FirestackReaction.fromJson(r as Map<String, dynamic>))
               .toList() ??
           [],
       readCount: json['read_count'] as int?,
@@ -132,10 +131,9 @@ class FirestackReaction {
     return FirestackReaction(
       emoji: json['emoji'] as String,
       count: json['count'] as int? ?? 0,
-      userIds: (json['users'] as List<dynamic>?)
-              ?.map((u) => u as int)
-              .toList() ??
-          [],
+      userIds:
+          (json['users'] as List<dynamic>?)?.map((u) => u as int).toList() ??
+              [],
     );
   }
 

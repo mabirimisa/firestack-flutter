@@ -67,6 +67,42 @@ class FirestackDocument {
     return current;
   }
 
+  /// Create a copy with updated fields.
+  FirestackDocument copyWith({
+    String? id,
+    String? uuid,
+    Map<String, dynamic>? data,
+    int? collectionId,
+    FirestackUser? createdBy,
+    FirestackUser? updatedBy,
+    String? createdAt,
+    String? updatedAt,
+  }) {
+    return FirestackDocument(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      data: data ?? Map<String, dynamic>.from(this.data),
+      collectionId: collectionId ?? this.collectionId,
+      createdBy: createdBy ?? this.createdBy,
+      updatedBy: updatedBy ?? this.updatedBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  /// Check if the document contains a specific field.
+  bool hasField(String field) => data.containsKey(field);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FirestackDocument &&
+          runtimeType == other.runtimeType &&
+          uuid == other.uuid;
+
+  @override
+  int get hashCode => uuid.hashCode;
+
   @override
   String toString() => 'FirestackDocument(id: $id, uuid: $uuid)';
 }

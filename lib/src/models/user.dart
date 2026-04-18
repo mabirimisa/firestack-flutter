@@ -52,8 +52,65 @@ class FirestackUser {
         'updated_at': updatedAt,
       };
 
+  /// Parse [createdAt] as a [DateTime].
+  DateTime get createdAtDate => DateTime.parse(createdAt);
+
+  /// Parse [updatedAt] as a [DateTime].
+  DateTime get updatedAtDate => DateTime.parse(updatedAt);
+
+  /// Parse [emailVerifiedAt] as a [DateTime], or `null`.
+  DateTime? get emailVerifiedAtDate =>
+      emailVerifiedAt != null ? DateTime.parse(emailVerifiedAt!) : null;
+
+  /// Parse [lastLoginAt] as a [DateTime], or `null`.
+  DateTime? get lastLoginAtDate =>
+      lastLoginAt != null ? DateTime.parse(lastLoginAt!) : null;
+
   bool get isActive => status == 'active';
   bool get isVerified => emailVerifiedAt != null;
+
+  /// Whether the user has an avatar set.
+  bool get hasAvatar => avatar != null && avatar!.isNotEmpty;
+
+  /// Whether the user has a phone number set.
+  bool get hasPhone => phone != null && phone!.isNotEmpty;
+
+  /// Create a copy with updated fields.
+  FirestackUser copyWith({
+    int? id,
+    String? name,
+    String? email,
+    String? avatar,
+    String? phone,
+    String? status,
+    String? emailVerifiedAt,
+    String? lastLoginAt,
+    String? createdAt,
+    String? updatedAt,
+  }) {
+    return FirestackUser(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      avatar: avatar ?? this.avatar,
+      phone: phone ?? this.phone,
+      status: status ?? this.status,
+      emailVerifiedAt: emailVerifiedAt ?? this.emailVerifiedAt,
+      lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FirestackUser &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 
   @override
   String toString() => 'FirestackUser(id: $id, name: $name, email: $email)';

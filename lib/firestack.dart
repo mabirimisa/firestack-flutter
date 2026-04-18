@@ -7,6 +7,11 @@
 ///
 /// final app = Firestack.initialize(
 ///   apiKey: 'fsk_your_api_key',
+/// );
+///
+/// // Or with a custom server URL:
+/// final app2 = Firestack.initialize(
+///   apiKey: 'fsk_your_api_key',
 ///   baseUrl: 'https://your-server.com',
 /// );
 ///
@@ -48,4 +53,6 @@ export 'src/models/remote_config_entry.dart';
 export 'src/models/query_builder.dart';
 export 'src/models/channel.dart';
 export 'src/models/message.dart';
+export 'src/models/field_value.dart';
+export 'src/firestack_cache.dart';
 export 'src/firestack_exception.dart';

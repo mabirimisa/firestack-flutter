@@ -299,16 +299,14 @@ class FirestackMessaging {
   /// Toggle mute on a channel for the authenticated user.
   Future<bool> toggleMute(String channelId) async {
     final response = await _client.post('channels/$channelId/mute');
-    return (response['data'] as Map<String, dynamic>?)?['is_muted']
-            as bool? ??
+    return (response['data'] as Map<String, dynamic>?)?['is_muted'] as bool? ??
         false;
   }
 
   /// Toggle pin on a channel for the authenticated user.
   Future<bool> togglePin(String channelId) async {
     final response = await _client.post('channels/$channelId/pin');
-    return (response['data'] as Map<String, dynamic>?)?['is_pinned']
-            as bool? ??
+    return (response['data'] as Map<String, dynamic>?)?['is_pinned'] as bool? ??
         false;
   }
 }

@@ -5,11 +5,19 @@ import 'firestack_client.dart';
 /// ```dart
 /// final analytics = app.analytics;
 ///
+/// // Set user identity (like Firebase's setUserId)
+/// analytics.setUserId('user-123');
+///
+/// // Set user properties
+/// analytics.setUserProperty(name: 'subscription', value: 'premium');
+///
+/// // Log screen views
+/// await analytics.logScreenView(screenName: 'HomeScreen');
+///
 /// // Log a single event
 /// await analytics.logEvent(
-///   name: 'screen_view',
-///   properties: {'screen': 'home'},
-///   platform: 'android',
+///   name: 'purchase',
+///   properties: {'item_id': '42', 'price': '9.99'},
 /// );
 ///
 /// // Log batch events
@@ -23,9 +31,30 @@ class FirestackAnalytics {
   String? _sessionId;
   String? _platform;
   String? _appVersion;
+  String? _userId;
   Map<String, dynamic>? _deviceInfo;
+  final Map<String, dynamic> _userProperties = {};
 
   FirestackAnalytics({required FirestackClient client}) : _client = client;
+
+  /// Set the user ID for all subsequent events (like Firebase setUserId).
+  ///
+  /// Pass `null` to clear the user ID.
+  void setUserId(String? userId) => _userId = userId;
+
+  /// Set a user property (like Firebase setUserProperty).
+  ///
+  /// User properties are sent with every event automatically.
+  void setUserProperty({required String name, required String? value}) {
+    if (value == null) {
+      _userProperties.remove(name);
+    } else {
+      _userProperties[name] = value;
+    }
+  }
+
+  /// Get all current user properties.
+  Map<String, dynamic> get userProperties => Map.unmodifiable(_userProperties);
 
   /// Set default properties for all subsequent events.
   void setDefaults({
@@ -49,9 +78,14 @@ class FirestackAnalytics {
     String? appVersion,
     Map<String, dynamic>? deviceInfo,
   }) async {
+    final mergedProps = <String, dynamic>{
+      ..._userProperties,
+      if (properties != null) ...properties,
+    };
     await _client.post('/events', body: {
       'event_name': name,
-      if (properties != null) 'properties': properties,
+      if (mergedProps.isNotEmpty) 'properties': mergedProps,
+      if (_userId != null) 'user_id': _userId,
       if ((sessionId ?? _sessionId) != null)
         'session_id': sessionId ?? _sessionId,
       if ((platform ?? _platform) != null) 'platform': platform ?? _platform,
@@ -62,21 +96,59 @@ class FirestackAnalytics {
     });
   }
 
+  /// Log a screen/page view event (like Firebase logScreenView).
+  ///
+  /// ```dart
+  /// await analytics.logScreenView(
+  ///   screenName: 'HomeScreen',
+  ///   screenClass: 'HomePage',
+  /// );
+  /// ```
+  Future<void> logScreenView({
+    required String screenName,
+    String? screenClass,
+  }) async {
+    await logEvent(
+      name: 'screen_view',
+      properties: {
+        'screen_name': screenName,
+        if (screenClass != null) 'screen_class': screenClass,
+      },
+    );
+  }
+
+  /// Log a sign-up event.
+  Future<void> logSignUp({required String method}) async {
+    await logEvent(name: 'sign_up', properties: {'method': method});
+  }
+
+  /// Log a login event.
+  Future<void> logLogin({required String method}) async {
+    await logEvent(name: 'login', properties: {'method': method});
+  }
+
   /// Log multiple events in a single batch (max 100).
   Future<int> logBatch(List<AnalyticsEvent> events) async {
     final response = await _client.post('/events/batch', body: {
-      'events': events.map((e) => {
-            'event_name': e.name,
-            if (e.properties != null) 'properties': e.properties,
-            if ((e.sessionId ?? _sessionId) != null)
-              'session_id': e.sessionId ?? _sessionId,
-            if ((e.platform ?? _platform) != null)
-              'platform': e.platform ?? _platform,
-            if ((e.appVersion ?? _appVersion) != null)
-              'app_version': e.appVersion ?? _appVersion,
-            if ((e.deviceInfo ?? _deviceInfo) != null)
-              'device_info': e.deviceInfo ?? _deviceInfo,
-          }).toList(),
+      'events': events
+          .map((e) => {
+                'event_name': e.name,
+                if (e.properties != null || _userProperties.isNotEmpty)
+                  'properties': {
+                    ..._userProperties,
+                    if (e.properties != null) ...e.properties!,
+                  },
+                if (_userId != null) 'user_id': _userId,
+                if ((e.sessionId ?? _sessionId) != null)
+                  'session_id': e.sessionId ?? _sessionId,
+                if ((e.platform ?? _platform) != null)
+                  'platform': e.platform ?? _platform,
+                if ((e.appVersion ?? _appVersion) != null)
+                  'app_version': e.appVersion ?? _appVersion,
+                if ((e.deviceInfo ?? _deviceInfo) != null)
+                  'device_info': e.deviceInfo ?? _deviceInfo,
+              })
+          .toList(),
     });
 
     return (response['data'] as Map<String, dynamic>)['count'] as int? ?? 0;

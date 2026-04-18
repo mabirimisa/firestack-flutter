@@ -40,11 +40,13 @@ class RemoteConfigEntry {
   String get asString => value?.toString() ?? '';
 
   /// Get value as int.
-  int get asInt => value is int ? value as int : int.tryParse(value.toString()) ?? 0;
+  int get asInt =>
+      value is int ? value as int : int.tryParse(value.toString()) ?? 0;
 
   /// Get value as double.
-  double get asDouble =>
-      value is double ? value as double : double.tryParse(value.toString()) ?? 0.0;
+  double get asDouble => value is double
+      ? value as double
+      : double.tryParse(value.toString()) ?? 0.0;
 
   /// Get value as bool.
   bool get asBool {

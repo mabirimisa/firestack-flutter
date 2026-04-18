@@ -1,10 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'firestack_exception.dart';
+
+/// Log level for debug output.
+enum FirestackLogLevel { none, error, info, verbose }
 
 /// Low-level HTTP client for Firestack API.
 class FirestackClient {
@@ -13,10 +18,26 @@ class FirestackClient {
   final http.Client _httpClient;
   String? _bearerToken;
 
+  /// Request timeout. Defaults to 30 seconds.
+  Duration timeout;
+
+  /// Max retry attempts for retryable failures (5xx, timeout). 0 = no retries.
+  int maxRetries;
+
+  /// Log level for debug output.
+  FirestackLogLevel logLevel;
+
+  /// Custom log function. Defaults to [print].
+  void Function(String message)? logger;
+
   FirestackClient({
     required this.baseUrl,
     required this.apiKey,
     http.Client? httpClient,
+    this.timeout = const Duration(seconds: 30),
+    this.maxRetries = 3,
+    this.logLevel = FirestackLogLevel.none,
+    this.logger,
   }) : _httpClient = httpClient ?? http.Client();
 
   /// Set the bearer token for authenticated requests.
@@ -24,6 +45,12 @@ class FirestackClient {
 
   /// Get the current bearer token.
   String? get token => _bearerToken;
+
+  void _log(FirestackLogLevel level, String message) {
+    if (logLevel.index >= level.index && level != FirestackLogLevel.none) {
+      (logger ?? print)('[Firestack] $message');
+    }
+  }
 
   Map<String, String> get _headers => {
         'X-API-Key': apiKey,
@@ -63,14 +90,57 @@ class FirestackClient {
     }
   }
 
+  bool _isRetryable(int statusCode) =>
+      statusCode == 429 || (statusCode >= 500 && statusCode < 600);
+
+  Future<http.Response> _withRetry(
+    String method,
+    Future<http.Response> Function() request,
+  ) async {
+    var attempts = 0;
+    while (true) {
+      try {
+        _log(FirestackLogLevel.verbose, '$method attempt ${attempts + 1}');
+        final response = await request().timeout(timeout);
+        if (_isRetryable(response.statusCode) && attempts < maxRetries) {
+          attempts++;
+          final delay = Duration(
+            milliseconds: min(pow(2, attempts).toInt() * 500, 8000) +
+                Random().nextInt(500),
+          );
+          _log(FirestackLogLevel.info,
+              '$method ${response.statusCode} — retrying in ${delay.inMilliseconds}ms');
+          await Future.delayed(delay);
+          continue;
+        }
+        return response;
+      } on TimeoutException {
+        if (attempts < maxRetries) {
+          attempts++;
+          _log(FirestackLogLevel.info,
+              '$method timeout — retrying ($attempts/$maxRetries)');
+          continue;
+        }
+        _log(FirestackLogLevel.error,
+            '$method timeout after $maxRetries retries');
+        throw FirestackException(
+          'Request timed out after $maxRetries retries',
+          errorCode: 'timeout',
+        );
+      }
+    }
+  }
+
   /// Make a GET request and return parsed JSON body.
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? queryParams,
   }) async {
-    final response = await _httpClient.get(
-      _uri(path, queryParams),
-      headers: _headers,
+    final uri = _uri(path, queryParams);
+    _log(FirestackLogLevel.verbose, 'GET $uri');
+    final response = await _withRetry(
+      'GET $path',
+      () => _httpClient.get(uri, headers: _headers),
     );
     return _handleResponse(response);
   }
@@ -80,10 +150,15 @@ class FirestackClient {
     String path, {
     Map<String, dynamic>? body,
   }) async {
-    final response = await _httpClient.post(
-      _uri(path),
-      headers: _headers,
-      body: body != null ? jsonEncode(body) : null,
+    final uri = _uri(path);
+    _log(FirestackLogLevel.verbose, 'POST $uri');
+    final response = await _withRetry(
+      'POST $path',
+      () => _httpClient.post(
+        uri,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
     return _handleResponse(response);
   }
@@ -93,10 +168,15 @@ class FirestackClient {
     String path, {
     Map<String, dynamic>? body,
   }) async {
-    final response = await _httpClient.put(
-      _uri(path),
-      headers: _headers,
-      body: body != null ? jsonEncode(body) : null,
+    final uri = _uri(path);
+    _log(FirestackLogLevel.verbose, 'PUT $uri');
+    final response = await _withRetry(
+      'PUT $path',
+      () => _httpClient.put(
+        uri,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
     return _handleResponse(response);
   }
@@ -106,19 +186,26 @@ class FirestackClient {
     String path, {
     Map<String, dynamic>? body,
   }) async {
-    final response = await _httpClient.patch(
-      _uri(path),
-      headers: _headers,
-      body: body != null ? jsonEncode(body) : null,
+    final uri = _uri(path);
+    _log(FirestackLogLevel.verbose, 'PATCH $uri');
+    final response = await _withRetry(
+      'PATCH $path',
+      () => _httpClient.patch(
+        uri,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
     return _handleResponse(response);
   }
 
   /// Make a DELETE request.
   Future<Map<String, dynamic>> delete(String path) async {
-    final response = await _httpClient.delete(
-      _uri(path),
-      headers: _headers,
+    final uri = _uri(path);
+    _log(FirestackLogLevel.verbose, 'DELETE $uri');
+    final response = await _withRetry(
+      'DELETE $path',
+      () => _httpClient.delete(uri, headers: _headers),
     );
     return _handleResponse(response);
   }
@@ -133,6 +220,7 @@ class FirestackClient {
     Map<String, String>? metadata,
   }) async {
     final uri = _uri(path);
+    _log(FirestackLogLevel.verbose, 'UPLOAD $uri (${fileBytes.length} bytes)');
     final request = http.MultipartRequest('POST', uri);
 
     request.headers['X-API-Key'] = apiKey;
@@ -163,7 +251,7 @@ class FirestackClient {
       }
     }
 
-    final streamed = await _httpClient.send(request);
+    final streamed = await _httpClient.send(request).timeout(timeout);
     final response = await http.Response.fromStream(streamed);
     return _handleResponse(response);
   }
