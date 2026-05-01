@@ -1,3 +1,57 @@
+## 2.0.0 - **BREAKING CHANGES**
+
+### App User Separation & Multi-Tenancy
+
+**BREAKING CHANGE**: The SDK now requires an `appId` parameter to support proper multi-tenant app user isolation. Each project maintains its own separate user base.
+
+#### Authentication
+- **BREAKING**: `Firestack.initialize()` now requires `appId` parameter
+- **BREAKING**: `signUp()` no longer requires `passwordConfirmation` parameter
+- **BREAKING**: `signUp()` changed parameter order - `name` is now optional
+- **BREAKING**: Authentication endpoints changed:
+  - `/api/v1/auth/register` → `/api/v1/register`
+  - `/api/v1/auth/login` → `/api/v1/login`
+  - `/api/v1/auth/user` → `/api/v1/me`
+  - `/api/v1/auth/logout` → `/api/v1/logout`
+- **BREAKING**: API responses simplified - removed `data` wrapper for user objects
+
+#### User Model
+- **NEW**: `FirestackUser.projectId` - The project this user belongs to
+- **NEW**: `FirestackUser.appId` - The app this user belongs to
+- **NEW**: `FirestackUser.customClaims` - Map for role-based access control
+- **NEW**: `FirestackUser.metadata` - Map for additional user data
+- **NEW**: `user.isPending` - Check if user status is pending
+- **NEW**: `user.isDisabled` - Check if user status is disabled
+- **NEW**: `user.hasClaim(claim)` - Check if user has a specific custom claim
+- **NEW**: `user.getClaim<T>(claim)` - Get custom claim value with type casting
+- **NEW**: `user.getMetadata<T>(key)` - Get metadata value with type casting
+
+#### Migration Path
+See [MIGRATION_V2.md](MIGRATION_V2.md) for complete migration instructions.
+
+**Example Before (v1.x):**
+```dart
+final app = Firestack.initialize(apiKey: 'fsk_key');
+await auth.signUp(
+  name: 'John',
+  email: 'john@example.com',
+  password: 'pass',
+  passwordConfirmation: 'pass',
+);
+```
+
+**Example After (v2.0):**
+```dart
+final app = Firestack.initialize(apiKey: 'fsk_key', appId: 1);
+await auth.signUp(
+  email: 'john@example.com',
+  password: 'pass',
+  name: 'John', // Optional
+);
+```
+
+---
+
 ## 1.2.0
 
 ### Authentication

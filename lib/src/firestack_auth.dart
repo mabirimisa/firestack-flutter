@@ -26,7 +26,6 @@ typedef TokenPersistenceCallback = Future<void> Function(String? token);
 ///   name: 'John',
 ///   email: 'john@example.com',
 ///   password: 'password123',
-///   passwordConfirmation: 'password123',
 /// );
 ///
 /// // Sign in
@@ -46,6 +45,7 @@ typedef TokenPersistenceCallback = Future<void> Function(String? token);
 /// ```
 class FirestackAuth {
   final FirestackClient _client;
+  final int appId;
 
   FirestackUser? _cachedUser;
   String? _token;
@@ -54,7 +54,10 @@ class FirestackAuth {
   final StreamController<FirestackUser?> _authStateController =
       StreamController<FirestackUser?>.broadcast();
 
-  FirestackAuth({required FirestackClient client}) : _client = client;
+  FirestackAuth({
+    required FirestackClient client,
+    required this.appId,
+  }) : _client = client;
 
   /// Stream of auth state changes. Emits the user on sign-in and null on sign-out.
   Stream<FirestackUser?> get authStateChanges => _authStateController.stream;
@@ -91,21 +94,19 @@ class FirestackAuth {
 
   /// Register a new user.
   Future<FirestackUser> signUp({
-    required String name,
     required String email,
     required String password,
-    required String passwordConfirmation,
+    String? name,
   }) async {
-    final response = await _client.post('/auth/register', body: {
-      'name': name,
+    final response = await _client.post('/register', body: {
+      'app_id': appId,
       'email': email,
       'password': password,
-      'password_confirmation': passwordConfirmation,
+      if (name != null) 'name': name,
     });
 
-    final data = response['data'] as Map<String, dynamic>;
-    final user = FirestackUser.fromJson(data['user'] as Map<String, dynamic>);
-    await _setAuth(data['token'] as String, user);
+    final user = FirestackUser.fromJson(response['user'] as Map<String, dynamic>);
+    await _setAuth(response['token'] as String, user);
     return user;
   }
 
@@ -114,14 +115,14 @@ class FirestackAuth {
     required String email,
     required String password,
   }) async {
-    final response = await _client.post('/auth/login', body: {
+    final response = await _client.post('/login', body: {
+      'app_id': appId,
       'email': email,
       'password': password,
     });
 
-    final data = response['data'] as Map<String, dynamic>;
-    final user = FirestackUser.fromJson(data['user'] as Map<String, dynamic>);
-    await _setAuth(data['token'] as String, user);
+    final user = FirestackUser.fromJson(response['user'] as Map<String, dynamic>);
+    await _setAuth(response['token'] as String, user);
     return user;
   }
 
@@ -136,7 +137,7 @@ class FirestackAuth {
   /// Sign out the current user.
   Future<void> signOut() async {
     try {
-      await _client.post('/auth/logout');
+      await _client.post('/logout');
     } finally {
       await _clearAuth();
     }
@@ -144,9 +145,8 @@ class FirestackAuth {
 
   /// Get the current authenticated user profile.
   Future<FirestackUser> currentUser() async {
-    final response = await _client.get('/auth/user');
-    _cachedUser =
-        FirestackUser.fromJson(response['data'] as Map<String, dynamic>);
+    final response = await _client.get('/me');
+    _cachedUser = FirestackUser.fromJson(response as Map<String, dynamic>);
     _authStateController.add(_cachedUser);
     return _cachedUser!;
   }
@@ -162,9 +162,8 @@ class FirestackAuth {
     if (phone != null) body['phone'] = phone;
     if (avatar != null) body['avatar'] = avatar;
 
-    final response = await _client.put('/auth/user', body: body);
-    _cachedUser =
-        FirestackUser.fromJson(response['data'] as Map<String, dynamic>);
+    final response = await _client.put('/me', body: body);
+    _cachedUser = FirestackUser.fromJson(response as Map<String, dynamic>);
     _authStateController.add(_cachedUser);
     return _cachedUser!;
   }

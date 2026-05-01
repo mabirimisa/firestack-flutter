@@ -17,6 +17,7 @@ const String firestackDefaultBaseUrl = 'https://firestack.co.za';
 /// ```dart
 /// final app = Firestack.initialize(
 ///   apiKey: 'fsk_your_api_key',
+///   appId: 1, // Your app ID from the Firestack dashboard
 /// );
 /// ```
 ///
@@ -25,12 +26,14 @@ const String firestackDefaultBaseUrl = 'https://firestack.co.za';
 /// ```dart
 /// final app = Firestack.initialize(
 ///   apiKey: 'fsk_your_api_key',
+///   appId: 1,
 ///   baseUrl: 'https://your-server.com',
 /// );
 /// ```
 class Firestack {
   final FirestackClient _client;
   final String name;
+  final int appId;
 
   late final FirestackAuth auth;
   late final FirestackFirestore firestore;
@@ -47,9 +50,12 @@ class Firestack {
   /// The default app name.
   static const String defaultAppName = '[DEFAULT]';
 
-  Firestack._({required FirestackClient client, this.name = defaultAppName})
-      : _client = client {
-    auth = FirestackAuth(client: _client);
+  Firestack._({
+    required FirestackClient client,
+    required this.appId,
+    this.name = defaultAppName,
+  }) : _client = client {
+    auth = FirestackAuth(client: _client, appId: appId);
     firestore = FirestackFirestore(client: _client);
     storage = FirestackStorage(client: _client);
     notifications = FirestackNotifications(client: _client);
@@ -65,6 +71,7 @@ class Firestack {
   /// Initialize a Firestack app instance.
   ///
   /// [apiKey] - Your Firestack API key (starts with `fsk_`).
+  /// [appId] - Your app ID from the Firestack dashboard.
   /// [baseUrl] - The base URL of your Firestack server.
   ///   Defaults to [firestackDefaultBaseUrl].
   /// [name] - Optional name for the app instance. Allows multiple instances.
@@ -75,11 +82,12 @@ class Firestack {
   ///
   /// ```dart
   /// // Default instance
-  /// final app = Firestack.initialize(apiKey: 'fsk_main_key');
+  /// final app = Firestack.initialize(apiKey: 'fsk_main_key', appId: 1);
   ///
   /// // Named instance (e.g. for a second project)
   /// final secondary = Firestack.initialize(
   ///   apiKey: 'fsk_secondary_key',
+  ///   appId: 2,
   ///   name: 'secondary',
   /// );
   ///
@@ -89,6 +97,7 @@ class Firestack {
   /// ```
   static Firestack initialize({
     required String apiKey,
+    required int appId,
     String baseUrl = firestackDefaultBaseUrl,
     String name = defaultAppName,
     http.Client? httpClient,
@@ -114,7 +123,7 @@ class Firestack {
       logLevel: logLevel,
       logger: logger,
     );
-    final app = Firestack._(client: client, name: name);
+    final app = Firestack._(client: client, appId: appId, name: name);
     _apps[name] = app;
     return app;
   }

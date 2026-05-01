@@ -21,7 +21,7 @@ A complete Flutter/Dart SDK for [Firestack](https://firestack.co.za) — an open
 
 ```yaml
 dependencies:
-  firestack: ^1.2.0
+  firestack: ^2.0.0
 ```
 
 Then run:
@@ -38,10 +38,18 @@ import 'package:firestack/firestack.dart';
 void main() async {
   final app = Firestack.initialize(
     apiKey: 'fsk_your_api_key',
+    appId: 1, // Your app ID from Firestack dashboard
     // baseUrl defaults to https://firestack.co.za
   );
 
-  // Auth
+  // Register
+  final newUser = await app.auth.signUp(
+    email: 'alice@example.com',
+    password: 'password123',
+    name: 'Alice',
+  );
+
+  // Sign in
   final user = await app.auth.signIn(
     email: 'alice@example.com',
     password: 'password123',

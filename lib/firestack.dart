@@ -7,16 +7,23 @@
 ///
 /// final app = Firestack.initialize(
 ///   apiKey: 'fsk_your_api_key',
+///   appId: 1, // Your app ID from the Firestack dashboard
 /// );
 ///
 /// // Or with a custom server URL:
 /// final app2 = Firestack.initialize(
 ///   apiKey: 'fsk_your_api_key',
+///   appId: 1,
 ///   baseUrl: 'https://your-server.com',
 /// );
 ///
 /// // Auth
 /// final auth = app.auth;
+/// await auth.signUp(
+///   email: 'user@example.com',
+///   password: 'password',
+///   name: 'John Doe',
+/// );
 /// await auth.signIn(email: 'user@example.com', password: 'password');
 ///
 /// // Firestore
