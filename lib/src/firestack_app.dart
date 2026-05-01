@@ -17,7 +17,7 @@ const String firestackDefaultBaseUrl = 'https://firestack.co.za';
 /// ```dart
 /// final app = Firestack.initialize(
 ///   apiKey: 'fsk_your_api_key',
-///   appId: 1, // Your app ID from the Firestack dashboard
+///   appId: '550e8400-e29b-41d4-a716-446655440000', // Your app UUID from dashboard
 /// );
 /// ```
 ///
@@ -26,14 +26,14 @@ const String firestackDefaultBaseUrl = 'https://firestack.co.za';
 /// ```dart
 /// final app = Firestack.initialize(
 ///   apiKey: 'fsk_your_api_key',
-///   appId: 1,
+///   appId: '550e8400-e29b-41d4-a716-446655440000',
 ///   baseUrl: 'https://your-server.com',
 /// );
 /// ```
 class Firestack {
   final FirestackClient _client;
   final String name;
-  final int appId;
+  final String appId;  // Changed from int to String (UUID)
 
   late final FirestackAuth auth;
   late final FirestackFirestore firestore;
@@ -97,7 +97,7 @@ class Firestack {
   /// ```
   static Firestack initialize({
     required String apiKey,
-    required int appId,
+    required String appId,  // Now accepts UUID string
     String baseUrl = firestackDefaultBaseUrl,
     String name = defaultAppName,
     http.Client? httpClient,

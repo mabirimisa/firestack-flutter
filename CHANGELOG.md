@@ -1,3 +1,56 @@
+## 3.0.0 - **BREAKING CHANGES** (UUID Migration)
+
+### App UUID Migration
+
+**BREAKING CHANGE**: App identification now uses secure UUIDs instead of integer IDs for enhanced security and privacy.
+
+#### Why This Change?
+- ✅ **Security**: UUIDs prevent enumeration attacks (can't guess other app IDs like 2, 3, 4...)
+- ✅ **Privacy**: Doesn't expose how many apps exist in your Firestack instance
+- ✅ **Industry Standard**: Public-facing APIs should use UUIDs, not internal database IDs
+
+#### What Changed
+
+**1. SDK Initialization**
+- **BREAKING**: `appId` parameter is now `String` (UUID) instead of `int`
+- Get your app UUID from the Firestack dashboard → Apps → Settings
+```dart
+// Before (v2.x)
+final app = Firestack.initialize(
+  apiKey: 'fsk_key',
+  appId: 1,  // ❌ Integer ID
+);
+
+// After (v3.0)
+final app = Firestack.initialize(
+  apiKey: 'fsk_key',
+  appId: '550e8400-e29b-41d4-a716-446655440000',  // ✅ UUID
+);
+```
+
+**2. User Model**
+- **BREAKING**: `FirestackUser.appId` is now `String` (UUID) instead of `int`
+- JSON key changed from `app_id` to `app_uuid`
+
+**3. API Requests**
+- **BREAKING**: Registration/login now send `app_uuid` instead of `app_id`
+```json
+// Before (v2.x)
+{"app_id": 1, "email": "...", "password": "..."}
+
+// After (v3.0)
+{"app_uuid": "550e8400-e29b-41d4-a716-446655440000", "email": "...", "password": "..."}
+```
+
+#### Migration Steps
+
+1. **Get your app UUID** from Firestack dashboard
+2. **Update initialization** to use UUID string
+3. **Run tests** to ensure authentication works
+4. See [MIGRATION_V3.md](MIGRATION_V3.md) for detailed instructions
+
+---
+
 ## 2.0.0 - **BREAKING CHANGES**
 
 ### App User Separation & Multi-Tenancy

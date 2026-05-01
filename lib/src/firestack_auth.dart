@@ -45,7 +45,7 @@ typedef TokenPersistenceCallback = Future<void> Function(String? token);
 /// ```
 class FirestackAuth {
   final FirestackClient _client;
-  final int appId;
+  final String appId;  // Changed from int to String (UUID)
 
   FirestackUser? _cachedUser;
   String? _token;
@@ -99,7 +99,7 @@ class FirestackAuth {
     String? name,
   }) async {
     final response = await _client.post('/register', body: {
-      'app_id': appId,
+      'app_uuid': appId,  // Send UUID
       'email': email,
       'password': password,
       if (name != null) 'name': name,
@@ -116,7 +116,7 @@ class FirestackAuth {
     required String password,
   }) async {
     final response = await _client.post('/login', body: {
-      'app_id': appId,
+      'app_uuid': appId,  // Send UUID
       'email': email,
       'password': password,
     });

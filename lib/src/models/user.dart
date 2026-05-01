@@ -2,7 +2,7 @@
 class FirestackUser {
   final int id;
   final int projectId;
-  final int appId;
+  final String appId;  // Changed from int to String (UUID)
   final String name;
   final String email;
   final String? avatar;
@@ -36,7 +36,7 @@ class FirestackUser {
     return FirestackUser(
       id: json['id'] as int,
       projectId: json['project_id'] as int,
-      appId: json['app_id'] as int,
+      appId: json['app_uuid'] as String,  // Changed from app_id to app_uuid
       name: json['name'] as String,
       email: json['email'] as String,
       avatar: json['avatar'] as String?,
@@ -54,7 +54,7 @@ class FirestackUser {
   Map<String, dynamic> toJson() => {
         'id': id,
         'project_id': projectId,
-        'app_id': appId,
+        'app_uuid': appId,  // Changed from app_id to app_uuid
         'name': name,
         'email': email,
         'avatar': avatar,
