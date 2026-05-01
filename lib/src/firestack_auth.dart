@@ -146,7 +146,7 @@ class FirestackAuth {
   /// Get the current authenticated user profile.
   Future<FirestackUser> currentUser() async {
     final response = await _client.get('/me');
-    _cachedUser = FirestackUser.fromJson(response as Map<String, dynamic>);
+    _cachedUser = FirestackUser.fromJson(response);
     _authStateController.add(_cachedUser);
     return _cachedUser!;
   }
@@ -163,7 +163,7 @@ class FirestackAuth {
     if (avatar != null) body['avatar'] = avatar;
 
     final response = await _client.put('/me', body: body);
-    _cachedUser = FirestackUser.fromJson(response as Map<String, dynamic>);
+    _cachedUser = FirestackUser.fromJson(response);
     _authStateController.add(_cachedUser);
     return _cachedUser!;
   }

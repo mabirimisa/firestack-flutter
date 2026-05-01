@@ -112,7 +112,7 @@ class FirestackUser {
   FirestackUser copyWith({
     int? id,
     int? projectId,
-    int? appId,
+    String? appId,  // Changed from int? to String? for UUID
     String? name,
     String? email,
     String? avatar,
