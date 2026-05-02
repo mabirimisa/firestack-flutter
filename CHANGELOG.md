@@ -1,3 +1,51 @@
+## 3.2.0 - Verification flow + OAuth + push topics
+
+### Authentication
+- **NEW**: `auth.sendRegistrationCode()` / `auth.verifyAndRegister()` — the
+  full email-code based registration flow. Replaces the prior single-step
+  `signUp()` for apps that want email verification before account creation.
+- **NEW**: `auth.sendEmailVerificationCode()` / `auth.verifyEmail(code:)`
+  for verifying the email of a signed-in user.
+- **NEW**: `auth.sendPasswordResetCode()` + `auth.verifyAndResetPassword()`
+  6-digit code-based password reset, scoped per app.
+- **NEW**: `auth.resendCode(email:, type:)` to resend any code.
+- **DEPRECATED**: `changePassword`, `deleteAccount`, `refreshToken`,
+  `sendEmailVerification`, `resetPassword(token:)` — either replaced by
+  the new code flow or not yet implemented on the backend.
+
+### Push Notifications
+- **NEW**: `notifications.subscribeToTopic(topic, deviceId:)`,
+  `notifications.unsubscribeFromTopic()`, and `notifications.listTopics()`
+  now backed by the new per-device `topics` JSON column on the server.
+- **DEPRECATED**: `notifications.unreadCount()`, `delete()`, `deleteAll()`
+  — endpoints not yet implemented on the backend.
+
+### OAuth (Social Sign-In)
+- **NEW**: Backend now implements `POST /auth/oauth/{provider}` for sign-in
+  and `POST /auth/oauth/{provider}/link` / `DELETE .../unlink` for account
+  linking. **Google** is supported out of the box (verified via Google's
+  tokeninfo endpoint). Other providers return `501 Not Implemented`.
+- The existing SDK methods `signInWithOAuth()`, `linkOAuthProvider()`, and
+  `unlinkOAuthProvider()` now work end-to-end with the backend.
+
+## 3.1.0 - Per-app device tracking
+
+### Push Notifications & Devices
+
+- **NEW**: Devices are now tracked per app user. Every successful `signIn` /
+  `signUp` can include an optional `device:` payload that the backend stores
+  against the authenticated `AppUser` and returns on `GET /devices`.
+- **NEW**: `auth.registerDevice()`, `auth.listDevices()`, `auth.unregisterDevice()`
+  for explicit device lifecycle management.
+- **CHANGED**: `notifications.registerDevice()` and `notifications.unregisterDevice()`
+  now hit the new `/devices` and `/devices/unregister` endpoints (previously
+  `/auth/devices` / `/auth/devices/remove`).
+- **CHANGED**: `notifications.configure()` accepts richer device metadata
+  (`deviceId`, `deviceName`, `osVersion`, `appVersion`, `model`) which is
+  forwarded to the server. `appId` is now optional.
+- The backend project Notifications page lists all registered devices and
+  push targeting can be scoped to specific devices.
+
 ## 3.0.0 - **BREAKING CHANGES** (UUID Migration)
 
 ### App UUID Migration

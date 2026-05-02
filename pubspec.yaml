@@ -1,6 +1,6 @@
 name: firestack
 description: Flutter SDK for Firestack - a Firebase-compatible backend with multi-tenant app user isolation using secure UUID-based app identification. Provides authentication, Firestore-like database with caching and aggregate queries, file storage with upload progress, instant messaging, notifications, remote config with fetch throttling, analytics with user properties, collection group queries, and realtime listeners with auto-reconnect.
-version: 3.0.0
+version: 3.2.0
 homepage: https://github.com/mabirimisa/firestack-flutter
 repository: https://github.com/mabirimisa/firestack-flutter
 issue_tracker: https://github.com/mabirimisa/firestack-flutter/issues

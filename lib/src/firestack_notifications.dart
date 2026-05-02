@@ -121,7 +121,11 @@ class FirestackNotifications {
   NotificationSettings? _lastSettings;
   String? _deviceToken;
   String? _platform;
-  String? _appId;
+  String? _deviceId;
+  String? _deviceName;
+  String? _osVersion;
+  String? _appVersion;
+  String? _model;
 
   final StreamController<FirestackNotification> _messageController =
       StreamController<FirestackNotification>.broadcast();
@@ -146,15 +150,37 @@ class FirestackNotifications {
     _tokenProvider = provider;
   }
 
-  /// Set the platform and app ID for device registration.
+  /// Set the platform and optional device metadata used when registering
+  /// this device with the Firestack server.
   ///
-  /// Call this once during app startup.
+  /// Call this once during app startup, ideally after you've collected the
+  /// device info from `device_info_plus` / `package_info_plus`.
   /// ```dart
-  /// notifications.configure(platform: 'android', appId: 'com.example.app');
+  /// notifications.configure(
+  ///   platform: 'android',
+  ///   appId: 'com.example.app',
+  ///   deviceId: androidInfo.id,
+  ///   deviceName: androidInfo.device,
+  ///   model: androidInfo.model,
+  ///   osVersion: androidInfo.version.release,
+  ///   appVersion: packageInfo.version,
+  /// );
   /// ```
-  void configure({required String platform, required String appId}) {
+  void configure({
+    required String platform,
+    String? appId,
+    String? deviceId,
+    String? deviceName,
+    String? osVersion,
+    String? appVersion,
+    String? model,
+  }) {
     _platform = platform;
-    _appId = appId;
+    _deviceId = deviceId;
+    _deviceName = deviceName;
+    _osVersion = osVersion;
+    _appVersion = appVersion;
+    _model = model;
   }
 
   /// The last known permission settings, or `null` if not yet requested.
@@ -213,7 +239,7 @@ class FirestackNotifications {
 
   /// Register the device for push notifications with the Firestack server.
   ///
-  /// Requires [configure] to be called first with platform and appId.
+  /// Requires [configure] to be called first with at least platform.
   /// If no token is provided, the [DeviceTokenProvider] is called.
   Future<void> registerDevice({String? token}) async {
     final pushToken = token ?? _deviceToken ?? await getToken();
@@ -223,17 +249,21 @@ class FirestackNotifications {
         'Provide a token or set a DeviceTokenProvider.',
       );
     }
-    if (_platform == null || _appId == null) {
+    if (_platform == null) {
       throw StateError(
-        'Platform and appId not configured. '
+        'Platform not configured. '
         'Call notifications.configure(platform:, appId:) first.',
       );
     }
 
-    await _client.post('/auth/devices', body: {
+    await _client.post('/devices', body: {
       'token': pushToken,
       'platform': _platform!,
-      'app_id': _appId!,
+      if (_deviceId != null) 'device_id': _deviceId,
+      if (_deviceName != null) 'device_name': _deviceName,
+      if (_osVersion != null) 'os_version': _osVersion,
+      if (_appVersion != null) 'app_version': _appVersion,
+      if (_model != null) 'model': _model,
     });
     _deviceToken = pushToken;
   }
@@ -241,17 +271,25 @@ class FirestackNotifications {
   /// Unregister this device from push notifications.
   Future<void> unregisterDevice() async {
     final token = _deviceToken;
-    if (token == null) return;
-    await _client.post('/auth/devices/remove', body: {
-      'token': token,
+    if (token == null && _deviceId == null) return;
+    await _client.post('/devices/unregister', body: {
+      if (token != null) 'token': token,
+      if (_deviceId != null) 'device_id': _deviceId,
     });
     _deviceToken = null;
+  }
+
+  /// List the authenticated user's registered devices on the server.
+  Future<List<Map<String, dynamic>>> listDevices() async {
+    final response = await _client.get('/devices');
+    final list = response['devices'] as List? ?? const [];
+    return list.cast<Map<String, dynamic>>();
   }
 
   Future<void> _tryRegisterDevice() async {
     try {
       final token = await getToken();
-      if (token != null && _platform != null && _appId != null) {
+      if (token != null && _platform != null) {
         await registerDevice(token: token);
       }
     } catch (_) {
@@ -303,19 +341,33 @@ class FirestackNotifications {
 
   // ─── Topic Subscriptions ─────────────────────────────────
 
-  /// Subscribe to a notification topic.
+  /// Subscribe a device (or all the user's active devices) to a topic.
   ///
   /// ```dart
   /// await notifications.subscribeToTopic('promotions');
-  /// await notifications.subscribeToTopic('order-updates');
+  /// // Or scope to a specific device:
+  /// await notifications.subscribeToTopic('promotions', deviceId: 'abc-123');
   /// ```
-  Future<void> subscribeToTopic(String topic) async {
-    await _client.post('/notifications/topics/$topic/subscribe');
+  Future<void> subscribeToTopic(String topic, {String? deviceId}) async {
+    await _client.post(
+      '/notifications/topics/$topic/subscribe',
+      body: deviceId != null ? {'device_id': deviceId} : <String, dynamic>{},
+    );
   }
 
-  /// Unsubscribe from a notification topic.
-  Future<void> unsubscribeFromTopic(String topic) async {
-    await _client.post('/notifications/topics/$topic/unsubscribe');
+  /// Unsubscribe a device (or all the user's devices) from a topic.
+  Future<void> unsubscribeFromTopic(String topic, {String? deviceId}) async {
+    await _client.post(
+      '/notifications/topics/$topic/unsubscribe',
+      body: deviceId != null ? {'device_id': deviceId} : <String, dynamic>{},
+    );
+  }
+
+  /// List the union of topics the current user is subscribed to across
+  /// all of their active devices.
+  Future<List<String>> listTopics() async {
+    final response = await _client.get('/notifications/topics');
+    return (response['topics'] as List? ?? const []).cast<String>();
   }
 
   // ─── Server Notification CRUD ────────────────────────────
@@ -361,6 +413,9 @@ class FirestackNotifications {
   }
 
   /// Get unread notification count.
+  ///
+  /// **Not yet implemented on the server.**
+  @Deprecated('Endpoint not yet implemented on the backend')
   Future<int> unreadCount() async {
     final response = await _client.get('/notifications/unread-count');
     final data = response['data'] as Map<String, dynamic>? ?? {};
@@ -368,11 +423,17 @@ class FirestackNotifications {
   }
 
   /// Delete a notification.
+  ///
+  /// **Not yet implemented on the server.**
+  @Deprecated('Endpoint not yet implemented on the backend')
   Future<void> delete(String notificationId) async {
     await _client.delete('/notifications/$notificationId');
   }
 
   /// Delete all notifications.
+  ///
+  /// **Not yet implemented on the server.**
+  @Deprecated('Endpoint not yet implemented on the backend')
   Future<void> deleteAll() async {
     await _client.delete('/notifications');
   }
